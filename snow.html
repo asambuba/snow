@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>snowball</title>
+<style>
+body{margin:0;overflow:hidden;background:linear-gradient(#123,#456);cursor: url('123.png') 24 24, auto;}canvas{touch-action:none}.info{position:fixed;color:white;padding:10px;font-family:Arial}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+const canvas=document.getElementById("canvas"),ctx=canvas.getContext("2d");
+canvas.width=innerWidth;canvas.height=innerHeight;
+class Particle{
+	constructor(x,y,r){this.pos={x,y};this.vel={x:0,y:0};this.r=r;this.mass=r*0.1;this.melt=0}
+	update(){this.vel.y+=0.15;this.vel.x*=0.99;this.vel.y*=0.99;this.pos.x+=this.vel.x;this.pos.y+=this.vel.y}
+	draw(){ctx.beginPath();ctx.arc(this.pos.x,this.pos.y,this.r,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${1-this.melt})`;ctx.fill()}
+}
+let particles=[],snowballs=[],snowmen=[],isDragging=false,mouse={x:0,y:0,px:0,py:0},collectedSnow=0;
+function createSnow(){
+  for(let i=0;i<10;i++){
+    particles.push(new Particle(Math.random()*canvas.width,-10,Math.random()*1+1))
+  }
+  requestAnimationFrame(createSnow)
+}
+setTimeout(createSnow,1);
+class SnowmanPart{
+	constructor(x,y,r){this.pos={x,y};this.r=r;this.vel={x:0,y:0}}
+	update(){this.vel.y+=0.3;this.pos.x+=this.vel.x;this.pos.y+=this.vel.y;if(this.pos.y>canvas.height-this.r){this.pos.y=canvas.height-this.r;this.vel.y*=-0.4;this.vel.x*=0.8}}
+	draw(){ctx.beginPath();ctx.arc(this.pos.x,this.pos.y,this.r,0,Math.PI*2);ctx.fillStyle="white";ctx.fill()}
+}
+canvas.addEventListener("mousedown",e=>{
+  isDragging=true;
+  mouse.px=e.clientX;
+  mouse.py=e.clientY;
+});
+canvas.addEventListener("mousemove",e=>{
+  mouse.x=e.clientX;
+  mouse.y=e.clientY;
+  if(isDragging) particles.forEach(p=>{
+    let dx=p.pos.x-e.clientX,dy=p.pos.y-e.clientY;
+    if(Math.hypot(dx,dy)<50){
+      p.vel.x+=(e.clientX-mouse.px)*0.1;
+      p.vel.y+=(e.clientY-mouse.py)*0.1;
+      collectedSnow+=0.1;
+    }
+  });
+  mouse.px=e.clientX;
+  mouse.py=e.clientY;
+});
+canvas.addEventListener("mouseup",e=>{
+  isDragging=false;
+  if(collectedSnow>5){
+    let speed=15,angle=Math.atan2(e.clientY-mouse.py,e.clientX-mouse.px);
+    snowballs.push({pos:{x:mouse.px,y:mouse.py},vel:{x:Math.cos(angle)*speed,y:Math.sin(angle)*speed},r:Math.min(collectedSnow*0.5,15)});
+    collectedSnow=0;
+  } else if(e.button===2 && collectedSnow>30){
+    for(let i=0;i<3;i++){
+      snowmen.push(new SnowmanPart(mouse.x,mouse.y-i*40,20+(3-i)*10));
+    }
+    collectedSnow=0;
+  }
+});
+function animate(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  particles.forEach((p,i)=>{
+    p.update();
+    p.draw();
+    if(p.pos.y>canvas.height) particles.splice(i,1);
+  });
+  snowmen.forEach(s=>{s.update();s.draw()});
+  snowballs.forEach((b,i)=>{
+    b.vel.y+=0.5;
+    b.pos.x+=b.vel.x;
+    b.pos.y+=b.vel.y;
+    snowmen.forEach(s=>{
+      let dx=s.pos.x-b.pos.x,dy=s.pos.y-b.pos.y;
+      if(Math.hypot(dx,dy)<s.r+b.r){
+        s.vel.x+=b.vel.x*0.5;
+        s.vel.y+=b.vel.y*0.5;
+        snowballs.splice(i,1);
+      }
+    });
+    ctx.beginPath();
+    ctx.arc(b.pos.x,b.pos.y,b.r,0,Math.PI*2);
+    ctx.fillStyle="white";
+    ctx.fill();
+  });
+  requestAnimationFrame(animate);
+}
+animate();
+window.addEventListener("resize",()=>{canvas.width=innerWidth;canvas.height=innerHeight});
+</script>
+</body>
+</html>
